@@ -15,47 +15,29 @@ final GlobalKey<ScaffoldMessengerState> _scaffoldKey =
     GlobalKey<ScaffoldMessengerState>();
 
 void main() {
-  // DioClient.setUri("http://164.52.153.249:8089/api/v1");
   DioClient.setUri("http://10.10.22.249:3005/api/v1");
   runApp(const MyApp());
 }
 
-validarInternet() async {
+Future<void> validarInternet() async {
   InternetConnection().onStatusChange.listen((InternetStatus status) async {
     switch (status) {
       case InternetStatus.connected:
         final validandoConexion = await Store.getValidacionInternet();
         if (validandoConexion.toString() == "sinInternet") {
-          conexionFalla("Vuelve a tener conexión", Colors.green);
           await Store.deleteValidacionInternet();
         }
         break;
       case InternetStatus.disconnected:
-        conexionFalla("Sin acceso a internet", Colors.red);
         await Store.setValidacionInternet("sinInternet");
         break;
     }
   });
 }
 
-conexionFalla(String texto, Color color) {
-  _scaffoldKey.currentState?.showSnackBar(
-    SnackBar(
-      backgroundColor: color,
-      duration: const Duration(seconds: 4),
-      content: Text(texto, style: const TextStyle(fontWeight: FontWeight.w400)),
-/*       action: SnackBarAction(
-        label: 'Action',
-        onPressed: () {
-          // Code to execute.
-        },
-      ), */
-    ),
-  );
-}
-
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     validarInternet();
@@ -73,8 +55,9 @@ class MyApp extends StatelessWidget {
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+  const MyHomePage({Key? key, required this.title}) : super(key: key);
   final String title;
+
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
@@ -84,6 +67,7 @@ class _MyHomePageState extends State<MyHomePage> {
       MethodChannel('point_of_sale_opener');
   static const MethodChannel _resultChannel =
       MethodChannel('point_of_sale_result');
+  static const MethodChannel _qrGeneratorChannel = MethodChannel('generadorQR');
   String? autorizacion;
   String? pan;
   String? stan;
@@ -94,13 +78,13 @@ class _MyHomePageState extends State<MyHomePage> {
   int? monto;
   String? cedula;
   dynamic dataPunto;
+  String? qrImageBase64;
 
   @override
   void initState() {
     super.initState();
     _resultChannel.setMethodCallHandler((call) async {
       if (call.method == 'resultFromPointOfSale') {
-        /* print(call.arguments);   */
         setState(() {
           dataPunto = call.arguments;
           autorizacion = call.arguments['autorizacion'];
@@ -132,25 +116,41 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-/*   llamarResponseCode() async {
-    final apiLibreriaPayall = ResponseCodes();
-    final codigosDeRespuesta = await apiLibreriaPayall.getResponseCodes();
-    print(codigosDeRespuesta.data);
-  } */
-
-  actualizarDataAnulacion(context) async {
-    String fecha = fechaActual();
-    final Map<String, dynamic> data = {
-      'referencia': "XXXXX",
-      'fecha': fecha,
-    };
-    await actualizarStatusAnulacion(data);
-  }
-
-  llamarPreguntas() async {
-    final preguntas = GeneralInformation();
-    final response = await preguntas.getFaqBusiness("token");
-    print(response.toString());
+  Future<void> generateQR() async {
+    try {
+      final Map<String, dynamic> params = {
+        'data': json.encode({
+          "id": "V17654345",
+          "name": "Juan Diaz",
+          "phone": "584247689898",
+          "bank": "0102"
+        }),
+        'merchantId': "0102",
+        'totpKey': "KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK",
+        'secretKey': "12345678",
+        'timeout': 20,
+        'config': json.encode({
+          "title": "QR C2P S7B \n Generación de QR para pago C2P",
+          "qr_size": "200",
+          "image_size": "200",
+          "font_size_title": "10",
+          "font_size_text": "15",
+          "background_color": "#8F8F8F",
+          "progressbar_color": "#03AF7B",
+          "back_button_color": "#03AF7B",
+          "back_button_visibility": true,
+          "base64_img": ""
+        }),
+        'digitsTotp': 8,
+      };
+      final String result =
+          await _qrGeneratorChannel.invokeMethod('generateQR', params);
+      setState(() {
+        qrImageBase64 = result;
+      });
+    } on PlatformException catch (e) {
+      print("Error al generar el código QR: ${e.message}");
+    }
   }
 
   @override
@@ -159,53 +159,52 @@ class _MyHomePageState extends State<MyHomePage> {
     DateTime currentDateTime = DateTime(
         now.year, now.month, now.day, now.hour, now.minute, now.second);
     return Scaffold(
-        appBar: AppBar(
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-          title: const Text("Aplicacion de prueba"),
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: const Text("Aplicacion de prueba"),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(height: 16),
+            const Text("Invocar compra"),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () async {
+                await openPointOfSale();
+              },
+              child: Text(currentDateTime.toString()),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () async {
+                final exampleMethod = Categories();
+                String token =
+                    "Bearer eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiJwYXlhbGwiLCJzdWIiOiIwMDAwMDAwMDAwMDA0NzM3LmF1dG8iLCJwdiI6IjY2YmY0OGQ4ODM5NzFlMmE3YjhiNDU3OCIsInNlY3JldCI6IkxFRUpYbEBEMzNlT1Y2dmQkajcxSW9OZmNnI2tmY1lFIiwiYXV0aG9yaXRpZXMiOlsiUk9MRV9VU0VSIl0sImlhdCI6MTcyNTM2OTg0Nn0.kj6AcJi8INB98kqPTlPSZmkSZyhb5NuWBF3zknHdEgvrOpYciPekDmRmsxRic_Hv46gnToucACE5_0iBqhSJyQ";
+                final getCategories =
+                    await exampleMethod.getCategoriesFormat(token);
+                print(getCategories.toString());
+              },
+              child: const Text('invocar getBanksC2p'),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () async {
+                await generateQR();
+              },
+              child: const Text('Get QR'),
+            ),
+            const SizedBox(height: 16),
+            if (qrImageBase64 != null)
+              Image.memory(
+                base64Decode(qrImageBase64!),
+                width: 200,
+                height: 200,
+              ),
+          ],
         ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const SizedBox(height: 16),
-              const Text("Invocar compra"),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () async {
-                  await openPointOfSale();
-                  // actualizarDataAnulacion(context);
-                },
-                child: Text(currentDateTime.toString()),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () async {
-                  //llamarResponseCode();
-                  final banks = Banks();
-                  final getBanks = await banks.getBanksC2p();
-                  print(getBanks.toString());
-                },
-                child: const Text('invocar getBanksC2p'),
-              ),
-              const SizedBox(height: 16),
-/*               ElevatedButton(
-                onPressed: () {
-                    //llamarPreguntas();
-                },
-                child: const Text('Llamar a compra pos'),
-              ), */
-              /*   Text('Autorización: $autorizacion'),
-              Text('PAN: $pan'),
-              Text('STAN: $stan'),
-              Text('Merchant ID: $merchantID'),
-              Text('Terminal ID: $terminalID'),
-              Text('Recibo: $recibo'),
-              Text('Lote: $lote'),
-              Text('Monto: $monto'),
-              Text('Cédula: $cedula'),
-              Text("aquii: $dataPunto.toString()") */
-            ],
-          ),
-        ));
+      ),
+    );
   }
 }
