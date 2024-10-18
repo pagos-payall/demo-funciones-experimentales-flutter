@@ -6,11 +6,17 @@ import 'package:flutter_application_pos_conectar/services/api/transacciones.dart
 import 'package:flutter_application_pos_conectar/services/store/store.dart';
 import 'package:flutter_application_pos_conectar/utils/fecha.dart';
 import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
+import 'package:libreria_flutter_payall/api/banks/banks.dart';
+import 'package:libreria_flutter_payall/api/categories/categories.dart';
+import 'package:libreria_flutter_payall/api/generalInformation/general_information.dart';
+import 'package:libreria_flutter_payall/config/dio_client.dart';
 
 final GlobalKey<ScaffoldMessengerState> _scaffoldKey =
     GlobalKey<ScaffoldMessengerState>();
 
 void main() {
+  // DioClient.setUri("http://164.52.153.249:8089/api/v1");
+  DioClient.setUri("http://10.10.22.249:3005/api/v1");
   runApp(const MyApp());
 }
 
@@ -141,7 +147,11 @@ class _MyHomePageState extends State<MyHomePage> {
     await actualizarStatusAnulacion(data);
   }
 
-  llamarPackagePos() async {}
+  llamarPreguntas() async {
+    final preguntas = GeneralInformation();
+    final response = await preguntas.getFaqBusiness("token");
+    print(response.toString());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -158,30 +168,33 @@ class _MyHomePageState extends State<MyHomePage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const SizedBox(height: 16),
-              const Text("probar endpoint anulacion"),
+              const Text("Invocar compra"),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () async {
-                  //await openPointOfSale();
-                  actualizarDataAnulacion(context);
+                  await openPointOfSale();
+                  // actualizarDataAnulacion(context);
                 },
                 child: Text(currentDateTime.toString()),
               ),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   //llamarResponseCode();
+                  final banks = Banks();
+                  final getBanks = await banks.getBanksC2p();
+                  print(getBanks.toString());
                 },
-                child: const Text('peticion get a libreria codigo respuesta'),
+                child: const Text('invocar getBanksC2p'),
               ),
               const SizedBox(height: 16),
-              ElevatedButton(
+/*               ElevatedButton(
                 onPressed: () {
-                  //   llamarCategorias();
+                    //llamarPreguntas();
                 },
-                child: const Text('peticion pos a libreria categorias'),
-              ),
-/*               Text('Autorización: $autorizacion'),
+                child: const Text('Llamar a compra pos'),
+              ), */
+              /*   Text('Autorización: $autorizacion'),
               Text('PAN: $pan'),
               Text('STAN: $stan'),
               Text('Merchant ID: $merchantID'),

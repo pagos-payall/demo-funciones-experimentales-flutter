@@ -208,6 +208,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.1"
+  libreria_flutter_payall:
+    dependency: "direct main"
+    description:
+      path: libreria_flutter_payall
+      relative: true
+    source: path
+    version: "1.0.0"
   lints:
     dependency: transitive
     description:

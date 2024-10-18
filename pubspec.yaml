@@ -40,6 +40,8 @@ dependencies:
   internet_connection_checker_plus: ^2.5.0
   shared_preferences: ^2.2.3
   connectivity_plus: ^6.0.3
+  libreria_flutter_payall:
+    path: "libreria_flutter_payall"
 
 
 dev_dependencies:
