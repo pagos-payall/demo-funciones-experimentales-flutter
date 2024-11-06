@@ -37,20 +37,7 @@ class MainActivity: FlutterFragmentActivity() {
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, POINT_OF_SALE_CHANNEL).setMethodCallHandler { call, result ->
             if (call.method == "openPointOfSale") {
-                val operation = call.argument<String>("operation")
-                val monto = call.argument<Int>("monto")?.toLong()
-                val isAmountEditable = call.argument<Boolean>("isAmountEditable")
-                val rapidAfilid = call.argument<String>("rapidAfilid")
-                val cedula = call.argument<String>("cedula")
-
-                if (operation != null && monto != null && isAmountEditable != null && rapidAfilid != null && 
-                cedula != null) {
-                    openPointOfSale(operation,monto,isAmountEditable,rapidAfilid,
-                    cedula)
-                    result.success(null)
-                } else {
-                    result.error("ARGUMENT_ERROR", "One or more arguments are null", null)
-                }
+             
             } else {
                 result.notImplemented()
             }
@@ -58,16 +45,6 @@ class MainActivity: FlutterFragmentActivity() {
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, RESULT_CHANNEL).setMethodCallHandler { call, result ->
             if (call.method == "resultFromPointOfSale") {
-                val resultMap = call.arguments as Map<String, Any>
-                val autorizacion = resultMap["autorizacion"] as String?
-                val pan = resultMap["pan"] as String?
-                val stan = resultMap["stan"] as String?
-                val merchantID = resultMap["merchantID"] as String?
-                val terminalID = resultMap["terminalID"] as String?
-                val recibo = resultMap["recibo"] as String?
-                val lote = resultMap["lote"] as String?
-                val monto = resultMap["monto"] as Long?
-                val cedula = resultMap["cedula"] as String?
             } else {
                 result.notImplemented()
             }
@@ -85,7 +62,12 @@ class MainActivity: FlutterFragmentActivity() {
                         result.error("ERROR", "Error parsing QR code", e.message)
                     }
                 }
+
                 "setParseQrCode" -> {
+                //para realizar la generacion del QR
+                //merchantId = aba del banco
+                //merchantId
+                //Caso borde cliente edita monto
                     try {
                         val dataQR = call.argument<String>("dataQR") ?: ""
                         val merchantId = call.argument<String>("merchantId") ?: ""

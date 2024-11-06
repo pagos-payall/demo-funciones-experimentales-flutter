@@ -66,7 +66,7 @@ class _MyHomePageState extends State<MyHomePage> {
   final qrService = QrCodeService();
 
   // Función parseo de QR
-  void handleParseQr() async {
+/*   void handleParseQr() async {
     try {
       String result = await qrService.parseQrCode();
       print('QR parseado: $result');
@@ -76,7 +76,7 @@ class _MyHomePageState extends State<MyHomePage> {
     } catch (e) {
       print('Error: $e');
     }
-  }
+  } */
 
   // Función  QR
   void handleGenerateQr() async {
@@ -94,7 +94,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   // Función QR con TOTP
-  void handleGenerateQrWithTotp() async {
+/*   void handleGenerateQrWithTotp() async {
     try {
       String result = await qrService.generateQrCodeWithTotp();
       print('QR con TOTP generado: $result');
@@ -106,7 +106,7 @@ class _MyHomePageState extends State<MyHomePage> {
       print('Error: $e');
       // Manejo de errores
     }
-  }
+  } */
 
   Future<void> openPointOfSale() async {
     try {
@@ -139,18 +139,18 @@ class _MyHomePageState extends State<MyHomePage> {
             const SizedBox(height: 16),
             const SizedBox(height: 16),
             const SizedBox(height: 16),
-            ElevatedButton(
+/*             ElevatedButton(
               onPressed: handleParseQr,
               child: const Text('Parsear QR'),
-            ),
+            ), */
             ElevatedButton(
               onPressed: handleGenerateQr,
               child: const Text('Generar QR'),
             ),
-            ElevatedButton(
+/*             ElevatedButton(
               onPressed: handleGenerateQrWithTotp,
               child: const Text('Generar QR con TOTP'),
-            ),
+            ), */
             const SizedBox(height: 16),
             if (qrData != null)
               QrImageView(
