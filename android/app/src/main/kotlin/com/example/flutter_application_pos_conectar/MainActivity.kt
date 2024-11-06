@@ -19,17 +19,18 @@ import androidx.annotation.Nullable
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import org.json.JSONObject
-import org.suiche7b.sdk.qrcode.functions.GenerateQrTotp
-import org.suiche7b.sdk.qrcode.functions.ScanQrTotp
-import org.suiche7b.sdk.qrcode.functions.code.GenerateQrCodeTotp
-import org.suiche7b.sdk.qrcode.functions.code.ScanQrCodeTotp
+import android.util.Base64
+import java.nio.charset.StandardCharsets
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
+import java.security.MessageDigest
 
 @SuppressWarnings("ALL")  
 class MainActivity: FlutterFragmentActivity() {
     private val POINT_OF_SALE_CHANNEL = "point_of_sale_opener"
     private val RESULT_CHANNEL = "point_of_sale_result"
-    private val QR_GENERATOR_CHANNEL = "generadorQR"
     private val INTENT_VENTA = 1
+    private val PARSE_QR_CHANNEL = "generacion_qr"  
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -72,55 +73,57 @@ class MainActivity: FlutterFragmentActivity() {
             }
         }
 
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, QR_GENERATOR_CHANNEL).setMethodCallHandler { call, result ->
-            if (call.method == "generateQR") {
-                val data = call.argument<String>("data")
-                val merchantId = call.argument<String>("merchantId")
-                val totpKey = call.argument<String>("totpKey")
-                val secretKey = call.argument<String>("secretKey")
-                val timeout = call.argument<Int>("timeout") ?: 20
-                val config = call.argument<String>("config")
-                val digitsTotp = call.argument<Int>("digitsTotp") ?: 8
-
-                if (data != null && merchantId != null && totpKey != null && secretKey != null && config != null) {
-                    generateQR(data, merchantId, totpKey, secretKey, timeout, config, digitsTotp, result)
-                } else {
-                    result.error("INVALID_ARGUMENTS", "Missing required arguments", null)
+        // Canal para generación de QR
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, PARSE_QR_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getParseQrCode" -> {
+                    try {
+                        val dataQR = call.argument<String>("dataQR") ?: ""
+                        val parsedData = getParseQrCode(dataQR)
+                        result.success(parsedData)
+                    } catch (e: Exception) {
+                        result.error("ERROR", "Error parsing QR code", e.message)
+                    }
                 }
-            } else {
-                result.notImplemented()
+                "setParseQrCode" -> {
+                    try {
+                        val dataQR = call.argument<String>("dataQR") ?: ""
+                        val merchantId = call.argument<String>("merchantId") ?: ""
+                        val encodedData = setParseQrCode(dataQR, merchantId)
+                        result.success(encodedData)
+                    } catch (e: Exception) {
+                        result.error("ERROR", "Error generating QR code", e.message)
+                    }
+                }
+                "setParseQrCodeTotp" -> {
+                    try {
+                        val dataQR = call.argument<String>("dataQR") ?: ""
+                        val merchantId = call.argument<String>("merchantId") ?: ""
+                        val totpKey = call.argument<String>("totpKey") ?: ""
+                        val secretKey = call.argument<String>("secretKey") ?: ""
+                        val encodedData = setParseQrCodeTotp(dataQR, merchantId, totpKey, secretKey)
+                        result.success(encodedData)
+                    } catch (e: Exception) {
+                        result.error("ERROR", "Error generating QR code with TOTP", e.message)
+                    }
+                }
+                else -> {
+                    result.notImplemented()
+                }
             }
         }
     }
 
     private fun openPointOfSale(operation: String, monto: Long, isAmountEditable: Boolean, rapidAfilid: String, cedula:String) {
         val intent = Intent("android.intent.action.MAIN")
-        val appURL = "com.rapidpago.mpos.financialdev"
-        val cn = ComponentName(appURL,"com.rapidpago.mpos.sunmi.InvokeActivity")
+        val appURL = ""
+        val cn = ComponentName(appURL,"")
         intent.component = cn
         intent.putExtra("OPERACION", operation)
         intent.putExtra("MONTO", monto)
         intent.putExtra("MONTO_EDITABLE", isAmountEditable)
-        intent.putExtra("RAPID_AFILID", rapidAfilid)
         intent.putExtra("CEDULA", cedula)
         startActivityForResult(intent, INTENT_VENTA)
-    }
-
-    private fun generateQR(data: String, merchantId: String, totpKey: String, secretKey: String, timeout: Int, config: String, digitsTotp: Int, result: MethodChannel.Result) {
-        val generateQrTotp = GenerateQrTotp(this)
-        generateQrTotp.createQrCode(data, merchantId, totpKey, secretKey, timeout, config, digitsTotp, true, false, object : GenerateQrCodeTotp.OncreateQrCode {
-            override fun oncreateQrCodeSuccess(code: String) {
-                runOnUiThread {
-                    result.success(code)
-                }
-            }
-
-            override fun oncreateQrCodeError(error: String?) {
-                runOnUiThread {
-                    result.error("QR_GENERATION_FAILED", error ?: "Unknown error", null)
-                }
-            }
-        })
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -179,5 +182,68 @@ class MainActivity: FlutterFragmentActivity() {
                 }
             }
         }
+    }
+
+    // Implementación de funciones para QR
+    private fun getParseQrCode(dataQR: String): String {
+        val decodedBytes = Base64.decode(dataQR, Base64.DEFAULT)
+        return String(decodedBytes, StandardCharsets.UTF_8)
+    }
+
+    private fun setParseQrCode(dataQR: String, merchantId: String): String {
+        val jsonObject = JSONObject().apply {
+            put("data", dataQR)
+            put("merchantId", merchantId)
+            put("timestamp", System.currentTimeMillis())
+        }
+        
+        return Base64.encodeToString(
+            jsonObject.toString().toByteArray(StandardCharsets.UTF_8),
+            Base64.DEFAULT
+        )
+    }
+
+    private fun setParseQrCodeTotp(
+        dataQR: String,
+        merchantId: String,
+        totpKey: String,
+        secretKey: String
+    ): String {
+        // Generar TOTP
+        val totp = generateTotp(secretKey)
+        
+        val jsonObject = JSONObject().apply {
+            put("data", dataQR)
+            put("merchantId", merchantId)
+            put("totpKey", totpKey)
+            put("totp", totp)
+            put("timestamp", System.currentTimeMillis())
+            put("hash", generateHash(merchantId + totpKey + secretKey))
+        }
+        
+        return Base64.encodeToString(
+            jsonObject.toString().toByteArray(StandardCharsets.UTF_8),
+            Base64.DEFAULT
+        )
+    }
+
+    private fun generateTotp(secretKey: String): String {
+        val time = System.currentTimeMillis() / 30000 // 30 segundos de intervalo
+        val data = time.toString().toByteArray()
+        val hmacSha1 = Mac.getInstance("HmacSHA1")
+        val key = SecretKeySpec(secretKey.toByteArray(), "HmacSHA1")
+        hmacSha1.init(key)
+        val hmac = hmacSha1.doFinal(data)
+        val offset = hmac[hmac.size - 1].toInt() and 0xf
+        val binary = ((hmac[offset].toInt() and 0x7f) shl 24) or
+                    ((hmac[offset + 1].toInt() and 0xff) shl 16) or
+                    ((hmac[offset + 2].toInt() and 0xff) shl 8) or
+                    (hmac[offset + 3].toInt() and 0xff)
+        return String.format("%06d", binary % 1000000)
+    }
+
+    private fun generateHash(input: String): String {
+        val bytes = MessageDigest.getInstance("SHA-256").digest(input.toByteArray())
+        return bytes.joinToString("") { "%02x".format(it) }
     }
 }
