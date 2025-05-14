@@ -1,0 +1,2 @@
+/home/jmatospayall/Documentos/proyectos/demo-funciones-experimentales-flutter/android/app/.cxx/Debug/132i2f1h/x86/CMakeFiles/edit_cache.dir
+/home/jmatospayall/Documentos/proyectos/demo-funciones-experimentales-flutter/android/app/.cxx/Debug/132i2f1h/x86/CMakeFiles/rebuild_cache.dir
