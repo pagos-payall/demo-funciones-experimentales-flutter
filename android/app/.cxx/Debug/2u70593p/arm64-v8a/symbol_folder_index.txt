@@ -1,0 +1,1 @@
+/home/jmatospayall/Documentos/proyectos/demo-funciones-experimentales-flutter/build/app/intermediates/cxx/Debug/2u70593p/obj/arm64-v8a

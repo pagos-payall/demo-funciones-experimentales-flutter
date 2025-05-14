@@ -66,5 +66,5 @@ flutter {
 
 dependencies {
     implementation 'com.google.android.material:material:1.9.0'
-    implementation(name: 'QrSdkSuiche7b-v1.0.7.4-202408131757-v7-debug', ext: 'aar')
+    implementation(name: 'QrSdkSuiche7b-v1.0.7.1-202408131813-v7-debug', ext: 'aar')
 }
